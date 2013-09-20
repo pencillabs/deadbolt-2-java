@@ -22,10 +22,10 @@ import be.objectify.deadbolt.java.utils.PluginUtils;
 import be.objectify.deadbolt.java.utils.ReflectionUtils;
 import be.objectify.deadbolt.java.utils.RequestUtils;
 import play.Logger;
-import play.mvc.Action;
-import play.mvc.Http;
-import play.mvc.Result;
-import play.mvc.Results;
+import play.libs.F;
+import play.libs.F.Function0;
+import play.libs.F.Promise;
+import play.mvc.*;
 
 /**
  * Provides some convenience methods for concrete Deadbolt actions, such as getting the correct {@link DeadboltHandler},
@@ -77,9 +77,9 @@ public abstract class AbstractDeadboltAction<T> extends Action<T>
 
     /** {@inheritDoc} */
     @Override
-    public Result call(Http.Context ctx) throws Throwable
+    public F.Promise<SimpleResult> call(Http.Context ctx) throws Throwable
     {
-        Result result;
+        F.Promise<SimpleResult> result;
 
         Class annClass = configuration.getClass();
         if (isDeferred(ctx))
@@ -108,7 +108,7 @@ public abstract class AbstractDeadboltAction<T> extends Action<T>
      * @return the result
      * @throws Throwable if something bad happens
      */
-    public abstract Result execute(Http.Context ctx) throws Throwable;
+    public abstract F.Promise<SimpleResult> execute(Http.Context ctx) throws Throwable;
 
     /**
      * @param subject
@@ -142,7 +142,7 @@ public abstract class AbstractDeadboltAction<T> extends Action<T>
      * @param ctx             th request context
      * @return the result of {@link DeadboltHandler#onAuthFailure}
      */
-    protected Result onAuthFailure(DeadboltHandler deadboltHandler,
+    protected F.Promise<SimpleResult> onAuthFailure(DeadboltHandler deadboltHandler,
                                    String content,
                                    Http.Context ctx)
     {
@@ -156,9 +156,14 @@ public abstract class AbstractDeadboltAction<T> extends Action<T>
         }
         catch (Exception e)
         {
-            Logger.warn("Deadbolt: Exception when invoking onAuthFailure",
-                        e);
-            return Results.internalServerError();
+            Logger.warn("Deadbolt: Exception when invoking onAuthFailure", e);
+    		return Promise.promise(
+    				new Function0<SimpleResult>() {
+    				  public SimpleResult apply() {
+    					return Results.internalServerError();
+    				  }
+    				}
+    			  );
         }
     }
 
